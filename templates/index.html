@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Resume Analyzer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Syne:wght@600;700;800&display=swap"
+        rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-grid"></div>
+
+    <main class="page">
+        <section class="hero">
+            <span class="eyebrow">ATS + NLP Analyzer</span>
+            <h1>AI Resume Analyzer</h1>
+            <p>
+                Upload your resume PDF, paste the job description, and get ATS-style matching
+                insights with extracted skills and missing keywords.
+            </p>
+        </section>
+
+        <section class="card analyzer-card">
+            <form action="/analyze" method="post" enctype="multipart/form-data" class="analyzer-form">
+                <label for="resume">Upload Resume (PDF, DOCX, or DOC)</label>
+                <input id="resume" name="resume" type="file" accept=".pdf,.docx,.doc" required />
+
+                <label for="job_description">Job Description</label>
+                <textarea
+                    id="job_description"
+                    name="job_description"
+                    rows="10"
+                    placeholder="Paste job description here..."
+                    required
+                >{{ job_description if job_description else '' }}</textarea>
+
+                <button type="submit">Analyze Resume</button>
+            </form>
+
+            {% if error %}
+                <div class="alert error">{{ error }}</div>
+            {% endif %}
+
+            {% if result %}
+                <section class="results">
+                    <h2>Analysis Result</h2>
+
+                    <div class="metric">
+                        <span>Match Score</span>
+                        <strong>{{ result.match_score }} / 100</strong>
+                    </div>
+
+                    <div class="metric role-metric">
+                        <div>
+                            <span class="role-label">Detected Role</span>
+                            <strong class="role-name">{{ result.detected_role }}</strong>
+                        </div>
+                        <div class="metric-value">
+                            <span>Role Fit Score</span>
+                            <strong>{{ result.role_weighted_score }} / 100</strong>
+                        </div>
+                    </div>
+
+                    <div class="result-grid">
+                        <div class="result-panel">
+                            <h3>Professional Details</h3>
+                            {% if result.certifications or result.languages %}
+                                <div class="professional-list">
+                                    {% if result.certifications %}
+                                        <div class="detail-section">
+                                            <strong>Certifications</strong>
+                                            <ul>
+                                                {% for cert in result.certifications %}
+                                                    <li>{{ cert }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    {% endif %}
+                                    {% if result.languages %}
+                                        <div class="detail-section">
+                                            <strong>Languages</strong>
+                                            <ul>
+                                                {% for lang in result.languages %}
+                                                    <li>{{ lang }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <p class="empty">No certifications or languages detected.</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="result-panel">
+                            <h3>Resume Completeness</h3>
+                            <div class="completeness">
+                                <p><strong>Sections Present:</strong></p>
+                                <ul>
+                                    <li>✓ Experience</li>
+                                    <li>✓ Projects</li>
+                                    <li>✓ Education</li>
+                                    <li>✓ Skills</li>
+                                </ul>
+                                <p class="missing-note" {% if result.missing_sections %}style="display: block"{% else %}style="display: none"{% endif %}>
+                                    Missing: {{ result.missing_sections|join(", ") }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="result-grid">
+                        <div class="result-panel">
+                            <h3>Skills Found</h3>
+                            {% if result.skills_found %}
+                                <ul>
+                                    {% for skill in result.skills_found %}
+                                        <li>{{ skill }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="empty">No skills were detected.</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="result-panel">
+                            <h3>Missing Skills</h3>
+                            {% if result.missing_skills %}
+                                <ul>
+                                    {% for skill in result.missing_skills %}
+                                        <li>{{ skill }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="empty">No major skills missing from our skill list.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="result-grid">
+                        <div class="result-panel">
+                            <h3>Missing JD Keywords</h3>
+                            {% if result.missing_keywords %}
+                                <ul>
+                                    {% for keyword in result.missing_keywords %}
+                                        <li>{{ keyword }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="empty">Strong keyword coverage for this job description.</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="result-panel">
+                            <h3>Missing Resume Sections</h3>
+                            {% if result.missing_sections %}
+                                <ul>
+                                    {% for section in result.missing_sections %}
+                                        <li>{{ section }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="empty">Core resume sections are present.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="suggestion breakdown">
+                        <h3>Detailed Score Breakdown</h3>
+                        <ul>
+                            <li>Semantic relevance: <strong>{{ result.score_breakdown.semantic }} / 100</strong></li>
+                            <li>Skill alignment: <strong>{{ result.score_breakdown.skills }}{% if result.score_breakdown.skills != 'N/A' %} / 100{% endif %}</strong></li>
+                            <li>Keyword coverage: <strong>{{ result.score_breakdown.keywords }}{% if result.score_breakdown.keywords != 'N/A' %} / 100{% endif %}</strong></li>
+                            <li>Resume section quality: <strong>{{ result.score_breakdown.sections }} / 100</strong></li>
+                            <li>Achievement impact signal: <strong>{{ result.score_breakdown.impact }} / 100</strong></li>
+                            <li>Role-specific fit: <strong>{{ result.score_breakdown.role_fit }} / 100</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="suggestion recommendation">
+                        <h3>Suggestion</h3>
+                        <p>{{ result.suggestion }}</p>
+                    </div>
+                </section>
+            {% endif %}
+        </section>
+
+        <section class="about">
+            <h2>Resume Upgrade Checklist</h2>
+            <p>
+                Tailor your resume to the exact role: mirror the job description keywords, keep core
+                sections clear (Experience, Projects, Education, Skills), and include quantified outcomes
+                like percentages, user impact, or performance gains in every major project bullet.
+            </p>
+        </section>
+    </main>
+</body>
+</html>
